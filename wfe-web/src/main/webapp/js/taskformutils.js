@@ -1,11 +1,8 @@
 var ie6compatibility = $.browser.msie && $.browser.version < 8;
 
 $(function() {
-	$(document).bind('drop dragover', function (e) {
+	$(document).bind("drop dragover", function (e) {
 		e.preventDefault();
-	});
-	$('.dropzone').each(function () {
-		initFileInput($(this));
 	});
 	$(".dropzone").bind("dragleave dragend drop", function (e) {
 		$(this).removeClass("dropzonehover");
@@ -22,17 +19,22 @@ $(function() {
 	$(document).delegate(".inputFileDelete", "click", function() {
 		deleteFile($(this).attr("inputId"));
 	});
-	$(".tabs").tabs();
-	$(".inputText").jqte({
-		blur: function() {
-			$(".jqte_toolbar").hide(true);
-		},
-		focus: function() {
-			$(".jqte_toolbar").show(true);
-		}
-	});
-	$(".jqte_toolbar").hide(true);
 });
+
+var commonInitComponents = initComponents;
+initComponents = function(container) {
+	container.find(".dropzone").filter(filterTemplatesElements).each(function () {
+		initFileInput($(this));
+	});
+	container.find(".tabs").tabs();
+	if ($.fn.trumbowyg) {
+		container.find(".inputFormattedText").filter(filterTemplatesElements).trumbowyg({
+		    lang: currentBrowserLanguage,
+		    svgPath: "css/trumbowyg.svg"
+		});
+	}
+	return commonInitComponents(container);
+}
 
 function initFileInput(dropzone) {
 	var progressBar = dropzone.parent().find(".progressbar");
@@ -74,7 +76,7 @@ function initFileInput(dropzone) {
 }
 
 function deleteFile(inputId) {
-	var dropzone = $("input[name='" + inputId + "'][current]").parent().parent();
+	var dropzone = $("input[name='" + inputId + "']").parent().parent();
 	dropzone.show();
 	jQuery.ajax({
 		type: "GET",

@@ -7,6 +7,7 @@ import org.apache.commons.logging.LogFactory;
 import org.apache.struts.upload.FormFile;
 
 import ru.runa.wf.web.servlet.UploadedFile;
+import ru.runa.wfe.InternalApplicationException;
 import ru.runa.wfe.commons.TypeConversionUtil;
 import ru.runa.wfe.service.client.FileVariableProxy;
 import ru.runa.wfe.user.IExecutorLoader;
@@ -18,6 +19,7 @@ import ru.runa.wfe.var.format.DateTimeFormat;
 import ru.runa.wfe.var.format.DoubleFormat;
 import ru.runa.wfe.var.format.ExecutorFormat;
 import ru.runa.wfe.var.format.FileFormat;
+import ru.runa.wfe.var.format.FormattedTextFormat;
 import ru.runa.wfe.var.format.HiddenFormat;
 import ru.runa.wfe.var.format.ListFormat;
 import ru.runa.wfe.var.format.LongFormat;
@@ -73,11 +75,11 @@ public class HttpComponentToVariableValue implements VariableFormatVisitor<Objec
         if (context.value == null) {
             return null;
         }
-        final String valueToFormat = context.getStringValueToFormat();
+        String stringValue = context.getStringValueToFormat();
         try {
-            return TypeConversionUtil.convertToExecutor(valueToFormat, executorLoader);
+            return TypeConversionUtil.convertToExecutor(stringValue, executorLoader);
         } catch (Exception e) {
-            saveErrorAndContinue(context, valueToFormat, e);
+            saveErrorAndContinue(context, stringValue, e);
         }
         return null;
     }
@@ -87,9 +89,9 @@ public class HttpComponentToVariableValue implements VariableFormatVisitor<Objec
         Object value = context.value;
         if (value == null) {
             // HTTP FORM doesn't pass unchecked checkbox value
-            value = Boolean.FALSE.toString();
+            return Boolean.FALSE;
         }
-        return convertDefault(booleanFormat, new HttpComponentToVariableValueContext(context.variableName, value));
+        return convertDefault(booleanFormat, context);
     }
 
     @Override
@@ -109,9 +111,6 @@ public class HttpComponentToVariableValue implements VariableFormatVisitor<Objec
 
     @Override
     public Object onFile(FileFormat fileFormat, HttpComponentToVariableValueContext context) {
-        if (context.value == null) {
-            return FormSubmissionUtils.IGNORED_VALUE;
-        }
         if (context.value instanceof FormFile) {
             FormFile formFile = (FormFile) context.value;
             if (formFile.getFileSize() > 0) {
@@ -132,12 +131,11 @@ public class HttpComponentToVariableValue implements VariableFormatVisitor<Objec
                 return uploadedFile.getFileVariable();
             }
             if (uploadedFile.getContent() == null) {
-                // null for display component
-                return FormSubmissionUtils.IGNORED_VALUE;
+                throw new InternalApplicationException("No content submitted for " + uploadedFile);
             }
             return new FileVariable(uploadedFile.getName(), uploadedFile.getContent(), uploadedFile.getMimeType());
         }
-        return FormSubmissionUtils.IGNORED_VALUE;
+        return null;
     }
 
     @Override
@@ -171,6 +169,11 @@ public class HttpComponentToVariableValue implements VariableFormatVisitor<Objec
     }
 
     @Override
+    public Object onFormattedTextString(FormattedTextFormat textFormat, HttpComponentToVariableValueContext context) {
+        return convertDefault(textFormat, context);
+    }
+
+    @Override
     public Object onUserType(UserTypeFormat userTypeFormat, HttpComponentToVariableValueContext context) {
         return convertDefault(userTypeFormat, context);
     }
@@ -193,11 +196,11 @@ public class HttpComponentToVariableValue implements VariableFormatVisitor<Objec
         if (context.value == null) {
             return null;
         }
-        final String valueToFormat = context.getStringValueToFormat();
+        String stringValue = context.getStringValueToFormat();
         try {
-            return format.parse(valueToFormat);
+            return format.parse(stringValue);
         } catch (Exception e) {
-            saveErrorAndContinue(context, valueToFormat, e);
+            saveErrorAndContinue(context, stringValue, e);
         }
         return null;
     }
