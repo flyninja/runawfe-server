@@ -1,7 +1,6 @@
 package ru.runa.wfe.job.impl;
 
-
-public class AssignStalledTasks extends JobTask<AssignStalledTasksExecutor> {
+public class NotifierJobTask extends JobTask<ExpiredTasksNotifierJob> {
 
     @Override
     protected void execute() throws Exception {
