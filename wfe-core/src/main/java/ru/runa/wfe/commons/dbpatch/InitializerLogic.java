@@ -17,6 +17,7 @@
  */
 package ru.runa.wfe.commons.dbpatch;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.Lists;
 import java.io.InputStream;
 import java.util.Collections;
@@ -28,6 +29,7 @@ import org.hibernate.tool.hbm2ddl.SchemaExport;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
+import ru.runa.wfe.InternalApplicationException;
 import ru.runa.wfe.commons.ApplicationContextFactory;
 import ru.runa.wfe.commons.ClassLoaderUtil;
 import ru.runa.wfe.commons.DatabaseProperties;
@@ -216,7 +218,7 @@ public class InitializerLogic implements ApplicationListener<ContextRefreshedEve
             }
             log.info("initialization completed");
         } catch (Exception e) {
-            log.error("initialization failed", e);
+            Throwables.propagate(e);
         }
     }
 
@@ -234,8 +236,7 @@ public class InitializerLogic implements ApplicationListener<ContextRefreshedEve
                 dbTransactionalInitializer.execute(patch, databaseVersion);
                 log.info("Patch " + patch + "(" + databaseVersion + ") is applied to database successfully.");
             } catch (Throwable th) {
-                log.error("Can't apply patch " + patch + "(" + databaseVersion + ").", th);
-                break;
+                throw new InternalApplicationException("Can't apply patch " + patch + "(" + databaseVersion + ").", th);
             }
         }
     }
