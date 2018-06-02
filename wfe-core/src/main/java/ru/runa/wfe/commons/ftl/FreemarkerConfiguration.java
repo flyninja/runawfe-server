@@ -13,6 +13,7 @@ import org.dom4j.Element;
 import ru.runa.wfe.commons.ClassLoaderUtil;
 import ru.runa.wfe.commons.xml.XmlUtils;
 
+@SuppressWarnings("unchecked")
 public class FreemarkerConfiguration {
     private static Log log = LogFactory.getLog(FreemarkerConfiguration.class);
     private static final String TAG_ELEMENT = "component";
