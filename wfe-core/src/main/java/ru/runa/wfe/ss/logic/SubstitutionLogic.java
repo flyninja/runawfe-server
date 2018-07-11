@@ -33,7 +33,6 @@ import ru.runa.wfe.ss.cache.SubstitutionCache;
 import ru.runa.wfe.ss.dao.SubstitutionCriteriaDAO;
 import ru.runa.wfe.ss.dao.SubstitutionDAO;
 import ru.runa.wfe.user.Actor;
-import ru.runa.wfe.user.ExecutorPermission;
 import ru.runa.wfe.user.User;
 
 /**
@@ -52,7 +51,7 @@ public class SubstitutionLogic extends CommonLogic implements ISubstitutionLogic
 
     public void create(User user, Substitution substitution) {
         Actor actor = executorDAO.getActor(substitution.getActorId());
-        checkPermissionsOnExecutor(user, actor, ExecutorPermission.UPDATE);
+        checkPermissionsOnExecutor(user, actor, Permission.UPDATE);
         List<Substitution> substitutions = substitutionDAO.getByActorId(substitution.getActorId(), false);
         if (substitution.getPosition() == null) {
             // add last
@@ -86,7 +85,7 @@ public class SubstitutionLogic extends CommonLogic implements ISubstitutionLogic
     @Override
     public List<Substitution> getSubstitutions(User user, Long actorId) {
         Actor actor = executorDAO.getActor(actorId);
-        checkPermissionsOnExecutor(user, actor, Permission.READ);
+        checkPermissionsOnExecutor(user, actor, Permission.LIST);
         return substitutionDAO.getByActorId(actorId, true);
     }
 
@@ -97,7 +96,7 @@ public class SubstitutionLogic extends CommonLogic implements ISubstitutionLogic
 
     public void update(User user, Substitution substitution) {
         Actor actor = executorDAO.getActor(substitution.getActorId());
-        checkPermissionsOnExecutor(user, actor, ExecutorPermission.UPDATE);
+        checkPermissionsOnExecutor(user, actor, Permission.UPDATE);
         List<Substitution> substitutions = substitutionDAO.getByActorId(substitution.getActorId(), false);
         Integer oldPosition = null;
         Substitution substitutionWithNewPosition = null;
@@ -137,7 +136,7 @@ public class SubstitutionLogic extends CommonLogic implements ISubstitutionLogic
     // TODO clear code in update
     public void changePosition(User user, Substitution substitution, int newPosition) {
         Actor actor = executorDAO.getActor(substitution.getActorId());
-        checkPermissionsOnExecutor(user, actor, ExecutorPermission.UPDATE);
+        checkPermissionsOnExecutor(user, actor, Permission.UPDATE);
         List<Substitution> substitutions = substitutionDAO.getByActorId(substitution.getActorId(), false);
         Integer oldPosition = substitution.getPosition();
         Substitution substitutionWithNewPosition = null;
@@ -175,7 +174,7 @@ public class SubstitutionLogic extends CommonLogic implements ISubstitutionLogic
             throw new SubstitutionDoesNotExistException(substitutionIds.toString());
         }
         List<Actor> actors = getSubstitutionActors(substitutions);
-        checkPermissionsOnExecutors(user, actors, ExecutorPermission.UPDATE);
+        checkPermissionsOnExecutors(user, actors, Permission.UPDATE);
         substitutionDAO.delete(substitutionIds);
         for (Actor actor : actors) {
             fixPositionsForDeletedSubstitution(actor.getId());
@@ -196,7 +195,7 @@ public class SubstitutionLogic extends CommonLogic implements ISubstitutionLogic
     public void delete(User user, Substitution substitution) {
         log.info("Deleting " + substitution);
         Actor actor = executorDAO.getActor(substitution.getActorId());
-        checkPermissionsOnExecutor(user, actor, ExecutorPermission.UPDATE);
+        checkPermissionsOnExecutor(user, actor, Permission.UPDATE);
         substitutionDAO.delete(substitution);
         fixPositionsForDeletedSubstitution(substitution.getActorId());
     }

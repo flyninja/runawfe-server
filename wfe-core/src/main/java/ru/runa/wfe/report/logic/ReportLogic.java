@@ -1,14 +1,11 @@
 package ru.runa.wfe.report.logic;
 
+import com.google.common.base.Function;
+import com.google.common.collect.Lists;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import org.springframework.beans.factory.annotation.Autowired;
-
-import com.google.common.base.Function;
-import com.google.common.collect.Lists;
-
 import ru.runa.wfe.commons.logic.WFCommonLogic;
 import ru.runa.wfe.presentation.BatchPresentation;
 import ru.runa.wfe.report.ReportDefinition;
@@ -16,16 +13,15 @@ import ru.runa.wfe.report.ReportFileMissingException;
 import ru.runa.wfe.report.ReportParameter;
 import ru.runa.wfe.report.ReportParameterMissingException;
 import ru.runa.wfe.report.ReportParameterUnknownException;
-import ru.runa.wfe.report.ReportPermission;
 import ru.runa.wfe.report.ReportWithNameExistsException;
-import ru.runa.wfe.report.ReportsSecure;
 import ru.runa.wfe.report.dao.ReportDAO;
 import ru.runa.wfe.report.dto.WfReport;
 import ru.runa.wfe.report.dto.WfReportParameter;
 import ru.runa.wfe.report.impl.GetCompiledReportParametersDescription;
 import ru.runa.wfe.security.AuthorizationException;
-import ru.runa.wfe.security.Identifiable;
 import ru.runa.wfe.security.Permission;
+import ru.runa.wfe.security.SecuredObject;
+import ru.runa.wfe.security.SecuredSingleton;
 import ru.runa.wfe.user.User;
 
 public class ReportLogic extends WFCommonLogic {
@@ -39,19 +35,19 @@ public class ReportLogic extends WFCommonLogic {
 
     public WfReport getReportDefinition(User user, Long id) {
         WfReport reportDefinition = reportDAO.getReportDefinition(id);
-        checkPermissionAllowed(user, reportDefinition, Permission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, reportDefinition);
         return reportDefinition;
     }
 
-    public Identifiable getReportDefinition(User user, String reportName) {
+    public SecuredObject getReportDefinition(User user, String reportName) {
         WfReport reportDefinition = new WfReport(reportDAO.getReportDefinition(reportName));
-        checkPermissionAllowed(user, reportDefinition, Permission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, reportDefinition);
         return reportDefinition;
     }
 
     public List<WfReportParameter> analyzeReportFile(WfReport report, byte[] reportFileContent) {
         Map<String, String> reportParameters = new GetCompiledReportParametersDescription(reportFileContent).onRawSqlReport();
-        List<WfReportParameter> result = new ArrayList<WfReportParameter>();
+        List<WfReportParameter> result = new ArrayList<>();
         for (Map.Entry<String, String> entry : reportParameters.entrySet()) {
             WfReportParameter reportParameterDto = new WfReportParameter();
             reportParameterDto.setInternalName(entry.getKey());
@@ -62,7 +58,7 @@ public class ReportLogic extends WFCommonLogic {
     }
 
     public void deployReport(User user, WfReport report, byte[] file) {
-        checkPermissionAllowed(user, ReportsSecure.INSTANCE, ReportPermission.DEPLOY);
+        permissionDAO.checkAllowed(user, Permission.ALL, SecuredSingleton.REPORTS);
         ReportDefinition existingByName = reportDAO.getReportDefinition(report.getName());
         if (existingByName != null) {
             throw new ReportWithNameExistsException(report.getName());
@@ -72,6 +68,7 @@ public class ReportLogic extends WFCommonLogic {
     }
 
     public void redeployReport(User user, WfReport report, byte[] file) throws ReportFileMissingException {
+        permissionDAO.checkAllowed(user, Permission.ALL, report);
         ReportDefinition existingByName = reportDAO.getReportDefinition(report.getName());
         if (existingByName != null && !existingByName.getId().equals(report.getId())) {
             throw new ReportWithNameExistsException(report.getName());
@@ -84,17 +81,15 @@ public class ReportLogic extends WFCommonLogic {
             file = replacedReport.getCompiledReport();
         }
         ReportDefinition reportDefinition = createReportDefinition(report, file);
-        if (!isPermissionAllowed(user, ReportsSecure.INSTANCE, ReportPermission.DEPLOY)
-                && !isPermissionAllowed(user, report, ReportPermission.DEPLOY)) {
-            throw new AuthorizationException(user + " does not have " + ReportPermission.DEPLOY + " to " + report);
+        if (!permissionDAO.isAllowed(user, Permission.ALL, report)) {
+            throw new AuthorizationException(user + " does not have " + Permission.ALL + " permission to " + report);
         }
 
         reportDAO.redeployReport(reportDefinition);
     }
 
     public void undeployReport(User user, Long reportId) {
-        WfReport report = reportDAO.getReportDefinition(reportId);
-        checkPermissionAllowed(user, report, ReportPermission.DEPLOY);
+        permissionDAO.checkAllowed(user, Permission.ALL, SecuredSingleton.REPORTS);
         reportDAO.undeploy(reportId);
     }
 

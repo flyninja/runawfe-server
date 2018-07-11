@@ -8,6 +8,7 @@ import java.util.Date;
 import java.util.List;
 import ru.runa.wfe.execution.logic.IProcessExecutionListener;
 import ru.runa.wfe.lang.NodeType;
+import ru.runa.wfe.security.ApplicablePermissions;
 import ru.runa.wfe.security.Permission;
 import ru.runa.wfe.security.SecuredObjectType;
 
@@ -261,12 +262,21 @@ public class SystemProperties {
         return RESOURCES.getBooleanProperty("base.process.id.variable.read.all", true);
     }
 
+    /**
+     * Max.number of integer IDs in "in (...)" clause in queries.
+     */
     public static int getDatabaseParametersCount() {
         return RESOURCES.getIntegerProperty("database.parameters.count", 900);
     }
 
     public static int getDatabasePageSize() {
         return RESOURCES.getIntegerProperty("database.page.size", 5000);
+    }
+    /**
+     * Max.number of string names (executor names, definition names, etc.) in "in (...)" clause in queries.
+     */
+    public static int getDatabaseNameParametersCount() {
+        return RESOURCES.getIntegerProperty("database.name.parameters.count", 50);
     }
 
     public static List<String> getFreemarkerStaticClassNames() {
@@ -342,11 +352,11 @@ public class SystemProperties {
      */
     public static List<Permission> getDefaultPermissions(SecuredObjectType securedObjectType) {
         List<Permission> result = new ArrayList<>();
-        List<Permission> allPermissions = securedObjectType.getAllPermissions();
+        List<Permission> applicablePermissions = ApplicablePermissions.listVisible(securedObjectType);
         List<String> permissionNames = RESOURCES.getMultipleStringProperty(securedObjectType.toString().toLowerCase() + ".default.permissions");
         for (String permissionName : permissionNames) {
             Permission foundPermission = null;
-            for (Permission permission : allPermissions) {
+            for (Permission permission : applicablePermissions) {
                 if (permission.getName().equals(permissionName)) {
                     foundPermission = permission;
                     break;

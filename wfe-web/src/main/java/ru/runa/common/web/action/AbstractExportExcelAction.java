@@ -51,7 +51,7 @@ import ru.runa.wfe.user.User;
 /**
  * @since 4.3.0
  */
-public abstract class AbstractExportExcelAction<T extends Object> extends ActionBase {
+public abstract class AbstractExportExcelAction<T> extends ActionBase {
 
     protected abstract List<T> getData(User user, BatchPresentation batchPresentation);
 
@@ -164,7 +164,7 @@ public abstract class AbstractExportExcelAction<T extends Object> extends Action
         }
 
         @Override
-        public boolean isAllowed(Permission permission, IdentifiableExtractor extractor) {
+        public boolean isAllowed(Permission permission, SecuredObjectExtractor extractor) {
             return false;
         }
 

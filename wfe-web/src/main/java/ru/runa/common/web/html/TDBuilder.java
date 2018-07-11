@@ -18,14 +18,11 @@
 package ru.runa.common.web.html;
 
 import java.io.Serializable;
-
 import javax.servlet.jsp.PageContext;
-
 import org.apache.ecs.html.TD;
-
 import ru.runa.wfe.presentation.BatchPresentation;
-import ru.runa.wfe.security.Identifiable;
 import ru.runa.wfe.security.Permission;
+import ru.runa.wfe.security.SecuredObject;
 import ru.runa.wfe.user.User;
 
 /**
@@ -34,32 +31,39 @@ import ru.runa.wfe.user.User;
  */
 public interface TDBuilder {
 
-    public interface Env {
-        public interface IdentifiableExtractor extends Serializable {
-            public Identifiable getIdentifiable(Object o, Env env);
+    interface Env {
+        interface SecuredObjectExtractor extends Serializable {
+            SecuredObject getSecuredObject(Object o, Env env);
         }
 
-        public User getUser();
+        final class IdentitySecuredObjectExtractor<T extends SecuredObject> implements SecuredObjectExtractor {
+            @Override
+            public SecuredObject getSecuredObject(Object o, Env env) {
+                return (T)o;
+            }
+        }
 
-        public PageContext getPageContext();
+        User getUser();
 
-        public BatchPresentation getBatchPresentation();
+        PageContext getPageContext();
 
-        public String getURL(Object object);
+        BatchPresentation getBatchPresentation();
 
-        public String getConfirmationMessage(Long pid);
+        String getURL(Object object);
 
-        public boolean isAllowed(Permission permission, IdentifiableExtractor extractor);
+        String getConfirmationMessage(Long pid);
 
-        public boolean hasProcessDefinitionPermission(Permission permission, Long processDefinitionId);
+        boolean isAllowed(Permission permission, ru.runa.common.web.html.TDBuilder.Env.SecuredObjectExtractor extractor);
+
+        boolean hasProcessDefinitionPermission(Permission permission, Long processDefinitionId);
 
     }
 
-    public TD build(Object object, Env env);
+    TD build(Object object, Env env);
 
-    public String getValue(Object object, Env env);
+    String getValue(Object object, Env env);
 
-    public String[] getSeparatedValues(Object object, Env env);
+    String[] getSeparatedValues(Object object, Env env);
 
-    public int getSeparatedValuesCount(Object object, Env env);
+    int getSeparatedValuesCount(Object object, Env env);
 }

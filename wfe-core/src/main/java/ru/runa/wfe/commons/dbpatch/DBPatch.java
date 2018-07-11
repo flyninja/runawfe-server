@@ -3,6 +3,7 @@ package ru.runa.wfe.commons.dbpatch;
 import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
+import java.sql.Types;
 import java.util.List;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -159,6 +160,7 @@ public abstract class DBPatch {
 
     protected final String getDDLRemoveIndex(String tableName, String indexName) {
         switch (dbType) {
+        case H2:
         case ORACLE:
         case POSTGRESQL:
             return "DROP INDEX " + indexName;
@@ -259,21 +261,20 @@ public abstract class DBPatch {
         String query;
         switch (dbType) {
         case ORACLE:
-            query = "ALTER TABLE " + tableName + " MODIFY(" + columnName + " " + (nullable == true ? "NULL" : "NOT NULL") + ")";
+            query = "ALTER TABLE " + tableName + " MODIFY(" + columnName + " " + (nullable ? "NULL" : "NOT NULL") + ")";
             break;
         case POSTGRESQL:
-            query = "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " " + (nullable == true ? "DROP" : "SET") + " NOT NULL";
+            query = "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " " + (nullable ? "DROP" : "SET") + " NOT NULL";
             break;
         case H2:
         case HSQL:
-            query = "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " SET " + (nullable == true ? "NULL" : "NOT NULL");
+            query = "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " SET " + (nullable ? "NULL" : "NOT NULL");
             break;
         case MYSQL:
-            query = "ALTER TABLE " + tableName + " MODIFY " + columnName + " " + currentSqlTypeName + " " + (nullable == true ? "NULL" : "NOT NULL");
+            query = "ALTER TABLE " + tableName + " MODIFY " + columnName + " " + currentSqlTypeName + " " + (nullable ? "NULL" : "NOT NULL");
             break;
         default:
-            query = "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " " + currentSqlTypeName + " "
-                    + (nullable == true ? "NULL" : "NOT NULL");
+            query = "ALTER TABLE " + tableName + " ALTER COLUMN " + columnName + " " + currentSqlTypeName + " " + (nullable ? "NULL" : "NOT NULL");
             break;
         }
         return query;
@@ -348,4 +349,24 @@ public abstract class DBPatch {
         }
     }
 
+    public class BigintColumnDef extends ColumnDef {
+        public BigintColumnDef(String name, boolean allowNulls) {
+            super(name, Types.BIGINT, allowNulls);
+        }
+    }
+
+    public class IntColumnDef extends ColumnDef {
+        public IntColumnDef(String name, boolean allowNulls) {
+            super(name, Types.INTEGER, allowNulls);
+        }
+    }
+
+    public class VarcharColumnDef extends ColumnDef {
+        public VarcharColumnDef(String name, int length, boolean allowNulls) {
+            // Don't know why length is passed 3 times here (as length, precision and scale),
+            // but I didn't like it and thus made this helper class.
+            // Other helper classes (BigintColumnDef, IntColumnDef) are just for company.
+            super(name, dialect.getTypeName(Types.VARCHAR, length, length, length), allowNulls);
+        }
+    }
 }

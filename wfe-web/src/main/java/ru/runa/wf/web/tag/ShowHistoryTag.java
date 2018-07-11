@@ -48,7 +48,6 @@ import ru.runa.wfe.audit.ProcessLogs;
 import ru.runa.wfe.audit.Severity;
 import ru.runa.wfe.commons.CalendarUtil;
 import ru.runa.wfe.commons.web.PortletUrlType;
-import ru.runa.wfe.execution.ProcessPermission;
 import ru.runa.wfe.security.Permission;
 import ru.runa.wfe.service.delegate.Delegates;
 
@@ -147,8 +146,8 @@ public class ShowHistoryTag extends ProcessBaseFormTag {
     }
 
     @Override
-    protected Permission getPermission() {
-        return ProcessPermission.READ;
+    protected Permission getSubmitPermission() {
+        return Permission.LIST;
     }
 
     @Override
@@ -162,7 +161,7 @@ public class ShowHistoryTag extends ProcessBaseFormTag {
     }
 
     @Override
-    protected boolean isFormButtonVisible() {
+    protected boolean isSubmitButtonVisible() {
         return false;
     }
 

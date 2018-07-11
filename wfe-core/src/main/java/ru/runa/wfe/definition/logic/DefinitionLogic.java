@@ -17,31 +17,29 @@
  */
 package ru.runa.wfe.definition.logic;
 
+import com.google.common.base.Preconditions;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-
 import ru.runa.wfe.InternalApplicationException;
 import ru.runa.wfe.audit.AdminActionLog;
 import ru.runa.wfe.audit.ProcessDefinitionDeleteLog;
 import ru.runa.wfe.commons.CalendarUtil;
 import ru.runa.wfe.commons.SystemProperties;
 import ru.runa.wfe.commons.logic.CheckMassPermissionCallback;
-import ru.runa.wfe.commons.logic.IgnoreDeniedPermissionCallback;
 import ru.runa.wfe.commons.logic.WFCommonLogic;
 import ru.runa.wfe.definition.DefinitionAlreadyExistException;
 import ru.runa.wfe.definition.DefinitionArchiveFormatException;
 import ru.runa.wfe.definition.DefinitionDoesNotExistException;
 import ru.runa.wfe.definition.DefinitionNameMismatchException;
-import ru.runa.wfe.definition.DefinitionPermission;
 import ru.runa.wfe.definition.Deployment;
 import ru.runa.wfe.definition.IFileDataProvider;
 import ru.runa.wfe.definition.InvalidDefinitionException;
 import ru.runa.wfe.definition.ProcessDefinitionChange;
-import ru.runa.wfe.definition.WorkflowSystemPermission;
 import ru.runa.wfe.definition.dto.WfDefinition;
 import ru.runa.wfe.definition.par.ProcessArchive;
 import ru.runa.wfe.execution.ParentProcessExistsException;
@@ -56,27 +54,21 @@ import ru.runa.wfe.presentation.BatchPresentation;
 import ru.runa.wfe.presentation.hibernate.CompilerParameters;
 import ru.runa.wfe.presentation.hibernate.PresentationCompiler;
 import ru.runa.wfe.presentation.hibernate.RestrictionsToOwners;
-import ru.runa.wfe.security.ASystem;
-import ru.runa.wfe.security.Identifiable;
 import ru.runa.wfe.security.Permission;
+import ru.runa.wfe.security.SecuredObject;
 import ru.runa.wfe.security.SecuredObjectType;
+import ru.runa.wfe.security.SecuredSingleton;
 import ru.runa.wfe.user.User;
 import ru.runa.wfe.var.VariableDefinition;
-
-import com.google.common.base.Preconditions;
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
 
 /**
  * Created on 15.03.2005
  */
 public class DefinitionLogic extends WFCommonLogic {
 
-    static final SecuredObjectType[] securedObjectTypes = new SecuredObjectType[] { SecuredObjectType.DEFINITION };
-
     public WfDefinition deployProcessDefinition(User user, byte[] processArchiveBytes, List<String> categories) {
-        checkPermissionAllowed(user, ASystem.INSTANCE, WorkflowSystemPermission.DEPLOY_DEFINITION);
-        ProcessDefinition definition = null;
+        permissionDAO.checkAllowed(user, Permission.CREATE, SecuredSingleton.DEFINITIONS);
+        ProcessDefinition definition;
         try {
             definition = parseProcessDefinition(processArchiveBytes);
         } catch (Exception e) {
@@ -92,15 +84,14 @@ public class DefinitionLogic extends WFCommonLogic {
         definition.getDeployment().setCreateDate(new Date());
         definition.getDeployment().setCreateActor(user.getActor());
         deploymentDAO.deploy(definition.getDeployment(), null);
-        Collection<Permission> allPermissions = new DefinitionPermission().getAllPermissions();
-        permissionDAO.setPermissions(user.getActor(), allPermissions, definition.getDeployment());
+        permissionDAO.setPermissions(user.getActor(), Collections.singletonList(Permission.ALL), definition.getDeployment());
         log.debug("Deployed process definition " + definition);
-        return new WfDefinition(definition, isPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.START_PROCESS));
+        return new WfDefinition(definition, permissionDAO.isAllowed(user, Permission.START, definition.getDeployment()));
     }
 
     public WfDefinition redeployProcessDefinition(User user, Long definitionId, byte[] processArchiveBytes, List<String> categories) {
         Deployment oldDeployment = deploymentDAO.getNotNull(definitionId);
-        checkPermissionAllowed(user, oldDeployment, DefinitionPermission.REDEPLOY_DEFINITION);
+        permissionDAO.checkAllowed(user, Permission.UPDATE, oldDeployment);
         if (processArchiveBytes == null) {
             Preconditions.checkNotNull(categories, "In mode 'update only categories' categories are required");
             oldDeployment.setCategories(categories);
@@ -125,7 +116,7 @@ public class DefinitionLogic extends WFCommonLogic {
             ProcessDefinition oldDefinition = parseProcessDefinition(oldDeployment.getContent());
             boolean containsAllPreviousComments = definition.getChanges().containsAll(oldDefinition.getChanges());
             if (!SystemProperties.isDefinitionDeploymentWithCommentsCollisionsAllowed()) {
-                if (containsAllPreviousComments != true) {
+                if (!containsAllPreviousComments) {
                     throw new InternalApplicationException("The new version of definition must contain all version comments which exists in earlier "
                             + "uploaded definition. Most likely you try to upload an old version of definition (page update is recommended).");
                 }
@@ -149,16 +140,11 @@ public class DefinitionLogic extends WFCommonLogic {
 
     /**
      * Updates process definition.
-     *
-     * @param user
-     * @param definitionId
-     * @param processArchiveBytes
-     * @return
      */
     public WfDefinition updateProcessDefinition(User user, Long definitionId, byte[] processArchiveBytes) {
         Preconditions.checkNotNull(processArchiveBytes, "processArchiveBytes is required!");
         Deployment deployment = deploymentDAO.getNotNull(definitionId);
-        checkPermissionAllowed(user, deployment, DefinitionPermission.REDEPLOY_DEFINITION);
+        permissionDAO.checkAllowed(user, Permission.UPDATE, deployment);
         ProcessDefinition uploadedDefinition;
         try {
             uploadedDefinition = parseProcessDefinition(processArchiveBytes);
@@ -172,7 +158,7 @@ public class DefinitionLogic extends WFCommonLogic {
         ProcessDefinition oldDefinition = parseProcessDefinition(deployment.getContent());
         boolean containsAllPreviousComments = uploadedDefinition.getChanges().containsAll(oldDefinition.getChanges());
         if (!SystemProperties.isDefinitionDeploymentWithCommentsCollisionsAllowed()) {
-            if (containsAllPreviousComments != true) {
+            if (!containsAllPreviousComments) {
                 throw new InternalApplicationException("The new version of definition must contain all version comments which exists in earlier "
                         + "uploaded definition. Most likely you try to upload an old version of definition (page update is recommended).");
             }
@@ -195,7 +181,7 @@ public class DefinitionLogic extends WFCommonLogic {
 
     public void setProcessDefinitionSubprocessBindingDate(User user, Long definitionId, Date date) {
         Deployment deployment = deploymentDAO.getNotNull(definitionId);
-        checkPermissionAllowed(user, deployment, DefinitionPermission.REDEPLOY_DEFINITION);
+        permissionDAO.checkAllowed(user, Permission.UPDATE, deployment);
         Date oldDate = deployment.getSubprocessBindingDate();
         deployment.setSubprocessBindingDate(date);
         deploymentDAO.update(deployment);
@@ -215,38 +201,38 @@ public class DefinitionLogic extends WFCommonLogic {
 
     public WfDefinition getLatestProcessDefinition(User user, String definitionName) {
         ProcessDefinition definition = getLatestDefinition(definitionName);
-        checkPermissionAllowed(user, definition.getDeployment(), Permission.READ);
-        return new WfDefinition(definition, isPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.START_PROCESS));
+        permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
+        return new WfDefinition(definition, permissionDAO.isAllowed(user, Permission.START, definition.getDeployment()));
     }
 
     public WfDefinition getProcessDefinitionVersion(User user, String name, Long version) {
         Deployment deployment = deploymentDAO.findDeployment(name, version);
         ProcessDefinition definition = getDefinition(deployment.getId());
-        checkPermissionAllowed(user, definition.getDeployment(), Permission.READ);
-        return new WfDefinition(definition, isPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.START_PROCESS));
+        permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
+        return new WfDefinition(definition, permissionDAO.isAllowed(user, Permission.START, definition.getDeployment()));
     }
 
     public WfDefinition getProcessDefinition(User user, Long definitionId) {
         try {
             ProcessDefinition definition = getDefinition(definitionId);
-            checkPermissionAllowed(user, definition.getDeployment(), Permission.READ);
-            return new WfDefinition(definition, isPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.START_PROCESS));
+            permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
+            return new WfDefinition(definition, permissionDAO.isAllowed(user, Permission.START, definition.getDeployment()));
         } catch (Exception e) {
             Deployment deployment = deploymentDAO.getNotNull(definitionId);
-            checkPermissionAllowed(user, deployment, Permission.READ);
+            permissionDAO.checkAllowed(user, Permission.LIST, deployment);
             return new WfDefinition(deployment);
         }
     }
 
     public ProcessDefinition getParsedProcessDefinition(User user, Long definitionId) {
         ProcessDefinition processDefinition = getDefinition(definitionId);
-        checkPermissionAllowed(user, processDefinition.getDeployment(), Permission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, processDefinition.getDeployment());
         return processDefinition;
     }
 
     public List<NodeGraphElement> getProcessDefinitionGraphElements(User user, Long definitionId, String subprocessId) {
         ProcessDefinition definition = getDefinition(definitionId);
-        checkPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
         if (subprocessId != null) {
             definition = definition.getEmbeddedSubprocessByIdNotNull(subprocessId);
         }
@@ -257,10 +243,10 @@ public class DefinitionLogic extends WFCommonLogic {
     public List<WfDefinition> getProcessDefinitionHistory(User user, String name) {
         List<Deployment> deploymentVersions = deploymentDAO.findAllDeploymentVersions(name);
         final List<WfDefinition> result = Lists.newArrayListWithExpectedSize(deploymentVersions.size());
-        isPermissionAllowed(user, deploymentVersions, Permission.READ, new IgnoreDeniedPermissionCallback() {
+        isPermissionAllowed(user, deploymentVersions, Permission.LIST, new CheckMassPermissionCallback() {
             @Override
-            public void OnPermissionGranted(Identifiable identifiable) {
-                result.add(new WfDefinition((Deployment) identifiable));
+            public void onPermissionGranted(SecuredObject securedObject) {
+                result.add(new WfDefinition((Deployment) securedObject));
             }
         });
         return result;
@@ -280,7 +266,7 @@ public class DefinitionLogic extends WFCommonLogic {
         }
         if (version == null) {
             Deployment latestDeployment = deploymentDAO.findLatestDeployment(definitionName);
-            checkPermissionAllowed(user, latestDeployment, DefinitionPermission.UNDEPLOY_DEFINITION);
+            permissionDAO.checkAllowed(user, Permission.ALL, latestDeployment);
             permissionDAO.deleteAllPermissions(latestDeployment);
             List<Deployment> deployments = deploymentDAO.findAllDeploymentVersions(definitionName);
             for (Deployment deployment : deployments) {
@@ -305,14 +291,14 @@ public class DefinitionLogic extends WFCommonLogic {
 
     public List<ProcessDefinitionChange> getChanges(Long definitionId) {
         String definitionName = getDefinition(definitionId).getName();
-        List<Number> deploymentIds = deploymentDAO.findAllDeploymentVersionIds(definitionName, true);
+        List<Long> deploymentIds = deploymentDAO.findAllDeploymentVersionIds(definitionName, true);
         return getChanges(deploymentIds);
     }
 
     public List<ProcessDefinitionChange> getLastChanges(Long definitionId, Long n) {
         Preconditions.checkArgument(n > 0);
         String definitionName = getDefinition(definitionId).getName();
-        List<Number> deploymentIds = deploymentDAO.findAllDeploymentVersionIds(definitionName, false);
+        List<Long> deploymentIds = deploymentDAO.findAllDeploymentVersionIds(definitionName, false);
         if (n < deploymentIds.size()) {
             deploymentIds = new ArrayList<>(deploymentIds.subList(0, n.intValue()));
         }
@@ -321,14 +307,14 @@ public class DefinitionLogic extends WFCommonLogic {
     }
 
     public List<ProcessDefinitionChange> findChanges(String definitionName, Long version1, Long version2) {
-        List<Number> deploymentIds = deploymentDAO.findDeploymentVersionIds(definitionName, version1, version2);
+        List<Long> deploymentIds = deploymentDAO.findDeploymentVersionIds(definitionName, version1, version2);
         return getChanges(deploymentIds);
     }
 
     public byte[] getFile(User user, Long definitionId, String fileName) {
         Deployment deployment = deploymentDAO.getNotNull(definitionId);
         if (!ProcessArchive.UNSECURED_FILE_NAMES.contains(fileName) && !fileName.endsWith(IFileDataProvider.BOTS_XML_FILE)) {
-            checkPermissionAllowed(user, deployment, DefinitionPermission.READ);
+            permissionDAO.checkAllowed(user, Permission.LIST, deployment);
         }
         if (IFileDataProvider.PAR_FILE.equals(fileName)) {
             return deployment.getContent();
@@ -362,19 +348,19 @@ public class DefinitionLogic extends WFCommonLogic {
 
     public List<SwimlaneDefinition> getSwimlanes(User user, Long definitionId) {
         ProcessDefinition definition = processDefinitionLoader.getDefinition(definitionId);
-        checkPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
         return definition.getSwimlanes();
     }
 
     public List<VariableDefinition> getProcessDefinitionVariables(User user, Long definitionId) {
         ProcessDefinition definition = getDefinition(definitionId);
-        checkPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
         return definition.getVariables();
     }
 
     public VariableDefinition getProcessDefinitionVariable(User user, Long definitionId, String variableName) {
         ProcessDefinition definition = getDefinition(definitionId);
-        checkPermissionAllowed(user, definition.getDeployment(), DefinitionPermission.READ);
+        permissionDAO.checkAllowed(user, Permission.LIST, definition.getDeployment());
         return definition.getVariable(variableName, true);
     }
 
@@ -432,34 +418,34 @@ public class DefinitionLogic extends WFCommonLogic {
             }
         }
         final List<WfDefinition> result = Lists.newArrayListWithExpectedSize(deploymentIds.size());
-        isPermissionAllowed(user, deployments, DefinitionPermission.START_PROCESS,
+        isPermissionAllowed(user, deployments, Permission.START,
                 new StartProcessPermissionCheckCallback(result, processDefinitions));
         return result;
     }
 
     private List<String> getProcessNameRestriction(User user) {
-        List<DefinitionIdentifiable> definitionIdentifiables = new ArrayList<DefinitionLogic.DefinitionIdentifiable>();
+        List<ru.runa.wfe.definition.logic.DefinitionLogic.DefinitionSecuredObject> definitionSecuredObjects = new ArrayList<>();
         for (String deploymentName : deploymentDAO.findDeploymentNames()) {
-            definitionIdentifiables.add(new DefinitionIdentifiable(deploymentName));
+            definitionSecuredObjects.add(new ru.runa.wfe.definition.logic.DefinitionLogic.DefinitionSecuredObject(deploymentName));
         }
-        final List<String> definitionsWithPermission = new ArrayList<String>();
-        isPermissionAllowed(user, definitionIdentifiables, Permission.READ, new IgnoreDeniedPermissionCallback() {
+        final List<String> definitionsWithPermission = new ArrayList<>();
+        isPermissionAllowed(user, definitionSecuredObjects, Permission.LIST, new CheckMassPermissionCallback() {
             @Override
-            public void OnPermissionGranted(Identifiable identifiable) {
-                definitionsWithPermission.add(((DefinitionIdentifiable) identifiable).getDeploymentName());
+            public void onPermissionGranted(SecuredObject securedObject) {
+                definitionsWithPermission.add(((ru.runa.wfe.definition.logic.DefinitionLogic.DefinitionSecuredObject) securedObject).getDeploymentName());
             }
         });
         return definitionsWithPermission;
     }
 
-    private List<ProcessDefinitionChange> getChanges(List<Number> deploymentIds) {
+    private List<ProcessDefinitionChange> getChanges(List<Long> deploymentIds) {
         List<ProcessDefinitionChange> ignoredChanges = null;
         if (!deploymentIds.isEmpty()) {
-            ProcessDefinition firstDefinition = getDefinition(deploymentIds.get(0).longValue());
+            ProcessDefinition firstDefinition = getDefinition(deploymentIds.get(0));
             Long firstDeploymentVersion = firstDefinition.getDeployment().getVersion();
-            Number previousDefinitionId = deploymentDAO.findDeploymentIdLatestVersionLessThan(firstDefinition.getName(), firstDeploymentVersion);
+            Long previousDefinitionId = deploymentDAO.findDeploymentIdLatestVersionLessThan(firstDefinition.getName(), firstDeploymentVersion);
             if (previousDefinitionId != null) {
-                ignoredChanges = getDefinition(previousDefinitionId.longValue()).getChanges();
+                ignoredChanges = getDefinition(previousDefinitionId).getChanges();
             }
         }
         List<ProcessDefinitionChange> result = new ArrayList<>();
@@ -475,19 +461,19 @@ public class DefinitionLogic extends WFCommonLogic {
         return result;
     }
 
-    private static final class DefinitionIdentifiable extends Identifiable {
+    private static final class DefinitionSecuredObject extends SecuredObject {
 
         private static final long serialVersionUID = 1L;
         private final String deploymentName;
 
-        public DefinitionIdentifiable(String deploymentName) {
+        public DefinitionSecuredObject(String deploymentName) {
             super();
             this.deploymentName = deploymentName;
         }
 
         @Override
         public Long getIdentifiableId() {
-            return Long.valueOf(deploymentName.hashCode());
+            return (long) deploymentName.hashCode();
         }
 
         @Override
@@ -500,7 +486,7 @@ public class DefinitionLogic extends WFCommonLogic {
         }
     }
 
-    private static final class StartProcessPermissionCheckCallback implements CheckMassPermissionCallback {
+    private static final class StartProcessPermissionCheckCallback extends CheckMassPermissionCallback {
         private final List<WfDefinition> result;
         private final Map<Deployment, ProcessDefinition> processDefinitions;
 
@@ -510,21 +496,21 @@ public class DefinitionLogic extends WFCommonLogic {
         }
 
         @Override
-        public void OnPermissionGranted(Identifiable identifiable) {
-            addDefinitionToResult(identifiable, true);
+        public void onPermissionGranted(SecuredObject securedObject) {
+            addDefinitionToResult(securedObject, true);
         }
 
         @Override
-        public void OnPermissionDenied(Identifiable identifiable) {
-            addDefinitionToResult(identifiable, false);
+        public void onPermissionDenied(SecuredObject securedObject) {
+            addDefinitionToResult(securedObject, false);
         }
 
-        private void addDefinitionToResult(Identifiable identifiable, boolean canBeStarted) {
-            ProcessDefinition definition = processDefinitions.get(identifiable);
+        private void addDefinitionToResult(SecuredObject securedObject, boolean canBeStarted) {
+            ProcessDefinition definition = processDefinitions.get(securedObject);
             if (definition != null) {
                 result.add(new WfDefinition(definition, canBeStarted));
             } else {
-                result.add(new WfDefinition((Deployment) identifiable));
+                result.add(new WfDefinition((Deployment) securedObject));
             }
         }
     }

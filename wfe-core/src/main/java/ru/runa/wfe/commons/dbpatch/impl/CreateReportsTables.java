@@ -39,8 +39,8 @@ public class CreateReportsTables extends DBPatch implements IDbPatchPostProcesso
      * @return Returns list of sql commands for table creation.
      */
     private List<String> createReportParametersTable() {
-        List<String> sql = new LinkedList<String>();
-        List<ColumnDef> columns = new LinkedList<DBPatch.ColumnDef>();
+        List<String> sql = new LinkedList<>();
+        List<ColumnDef> columns = new LinkedList<>();
         ColumnDef id = new ColumnDef("ID", Types.BIGINT, false);
         id.setPrimaryKey();
         columns.add(id);
@@ -61,8 +61,8 @@ public class CreateReportsTables extends DBPatch implements IDbPatchPostProcesso
      * @return Returns list of sql commands for table creation.
      */
     private List<String> createReportsTable() {
-        List<String> sql = new LinkedList<String>();
-        List<ColumnDef> columns = new LinkedList<DBPatch.ColumnDef>();
+        List<String> sql = new LinkedList<>();
+        List<ColumnDef> columns = new LinkedList<>();
         ColumnDef id = new ColumnDef("ID", Types.BIGINT, false);
         id.setPrimaryKey();
         columns.add(id);
@@ -79,7 +79,7 @@ public class CreateReportsTables extends DBPatch implements IDbPatchPostProcesso
     }
 
     @Override
-    public void postExecute() throws Exception {
+    public void postExecute() {
         if (permissionDAO.getPrivilegedExecutors(SecuredObjectType.REPORT).isEmpty()) {
             log.info("Adding " + SecuredObjectType.REPORT + " tokens message hash");
             String administratorName = SystemProperties.getAdministratorName();

@@ -17,15 +17,12 @@
  */
 package ru.runa.wf.web.html;
 
+import com.google.common.collect.Maps;
 import java.util.Map;
-
 import org.apache.ecs.ConcreteElement;
 import org.apache.ecs.StringElement;
 import org.apache.ecs.html.A;
 import org.apache.ecs.html.TD;
-
-import com.google.common.collect.Maps;
-
 import ru.runa.common.web.Commons;
 import ru.runa.common.web.form.IdForm;
 import ru.runa.common.web.form.IdVersionForm;
@@ -33,13 +30,13 @@ import ru.runa.common.web.html.BaseTDBuilder;
 import ru.runa.wf.web.MessagesProcesses;
 import ru.runa.wf.web.action.UndeployProcessDefinitionAction;
 import ru.runa.wfe.commons.web.PortletUrlType;
-import ru.runa.wfe.definition.DefinitionPermission;
 import ru.runa.wfe.definition.dto.WfDefinition;
 import ru.runa.wfe.execution.ProcessClassPresentation;
 import ru.runa.wfe.presentation.BatchPresentation;
 import ru.runa.wfe.presentation.BatchPresentationFactory;
 import ru.runa.wfe.presentation.filter.LongFilterCriteria;
 import ru.runa.wfe.presentation.filter.StringFilterCriteria;
+import ru.runa.wfe.security.Permission;
 import ru.runa.wfe.service.delegate.Delegates;
 
 /**
@@ -48,15 +45,15 @@ import ru.runa.wfe.service.delegate.Delegates;
 public class UndeployProcessDefinitionTDBuilder extends BaseTDBuilder {
 
     public UndeployProcessDefinitionTDBuilder() {
-        super(DefinitionPermission.UNDEPLOY_DEFINITION);
+        super(Permission.ALL);
     }
 
     @Override
     public TD build(Object object, Env env) {
         WfDefinition definition = (WfDefinition) object;
         BatchPresentation presentation = BatchPresentationFactory.PROCESSES.createDefault();
-        int definitionNameFieldIndex = presentation.getClassPresentation().getFieldIndex(ProcessClassPresentation.DEFINITION_NAME);
-        int definitionVersionFieldIndex = presentation.getClassPresentation().getFieldIndex(ProcessClassPresentation.DEFINITION_VERSION);
+        int definitionNameFieldIndex = presentation.getType().getFieldIndex(ProcessClassPresentation.DEFINITION_NAME);
+        int definitionVersionFieldIndex = presentation.getType().getFieldIndex(ProcessClassPresentation.DEFINITION_VERSION);
         presentation.getFilteredFields().put(definitionNameFieldIndex, new StringFilterCriteria(definition.getName()));
         presentation.getFilteredFields().put(definitionVersionFieldIndex, new LongFilterCriteria(definition.getVersion()));
         int allCount = Delegates.getExecutionService().getProcessesCount(env.getUser(), presentation);
@@ -77,7 +74,6 @@ public class UndeployProcessDefinitionTDBuilder extends BaseTDBuilder {
 
     @Override
     public String getValue(Object object, Env env) {
-        String result = MessagesProcesses.BUTTON_UNDEPLOY_DEFINITION.message(env.getPageContext());
-        return result;
+        return MessagesProcesses.BUTTON_UNDEPLOY_DEFINITION.message(env.getPageContext());
     }
 }

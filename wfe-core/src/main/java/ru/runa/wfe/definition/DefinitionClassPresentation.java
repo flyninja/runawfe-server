@@ -18,13 +18,13 @@
 package ru.runa.wfe.definition;
 
 import java.util.Date;
-
 import ru.runa.wfe.presentation.BatchPresentationConsts;
 import ru.runa.wfe.presentation.ClassPresentation;
 import ru.runa.wfe.presentation.DefaultDBSource;
 import ru.runa.wfe.presentation.FieldDescriptor;
 import ru.runa.wfe.presentation.FieldFilterMode;
 import ru.runa.wfe.presentation.filter.AnywhereStringFilterCriteria;
+import ru.runa.wfe.security.Permission;
 import ru.runa.wfe.user.Actor;
 
 /**
@@ -53,7 +53,7 @@ public class DefinitionClassPresentation extends ClassPresentation {
                 // get value/show in web getter parameters
                 new FieldDescriptor(NAME, String.class.getName(), new DefaultDBSource(Deployment.class, "name"), true, 1,
                         BatchPresentationConsts.ASC, FieldFilterMode.DATABASE, "ru.runa.common.web.html.PropertyTDBuilder", new Object[] {
-                                DefinitionPermission.START_PROCESS, "name" }),
+                        Permission.START, "name" }),
                 new FieldDescriptor(DESCRIPTION, String.class.getName(), new DefaultDBSource(Deployment.class, "description"), true,
                         FieldFilterMode.DATABASE, "ru.runa.wf.web.html.DescriptionProcessTDBuilder", new Object[] {}),
                 new FieldDescriptor(TYPE, AnywhereStringFilterCriteria.class.getName(), new DefaultDBSource(Deployment.class, "category"), true,
@@ -71,7 +71,7 @@ public class DefinitionClassPresentation extends ClassPresentation {
                         .setVisible(false) });
     }
 
-    public static final ClassPresentation getInstance() {
+    public static ClassPresentation getInstance() {
         return INSTANCE;
     }
 }

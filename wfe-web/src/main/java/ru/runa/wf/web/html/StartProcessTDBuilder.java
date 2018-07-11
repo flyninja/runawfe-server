@@ -22,7 +22,6 @@ import org.apache.ecs.StringElement;
 import org.apache.ecs.html.A;
 import org.apache.ecs.html.IMG;
 import org.apache.ecs.html.TD;
-
 import ru.runa.common.WebResources;
 import ru.runa.common.web.Commons;
 import ru.runa.common.web.ConfirmationPopupHelper;
@@ -33,9 +32,9 @@ import ru.runa.wf.web.action.StartDisabledImageProcessAction;
 import ru.runa.wf.web.action.StartImageProcessAction;
 import ru.runa.wf.web.tag.DefinitionUrlStrategy;
 import ru.runa.wfe.commons.web.PortletUrlType;
-import ru.runa.wfe.definition.DefinitionPermission;
 import ru.runa.wfe.definition.dto.WfDefinition;
 import ru.runa.wfe.form.Interaction;
+import ru.runa.wfe.security.Permission;
 import ru.runa.wfe.service.delegate.Delegates;
 
 /**
@@ -45,7 +44,7 @@ import ru.runa.wfe.service.delegate.Delegates;
 public class StartProcessTDBuilder extends BaseTDBuilder {
 
     public StartProcessTDBuilder() {
-        super(DefinitionPermission.START_PROCESS);
+        super(Permission.START);
     }
 
     @Override

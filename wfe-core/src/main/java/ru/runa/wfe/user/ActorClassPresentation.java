@@ -40,14 +40,14 @@ public class ActorClassPresentation extends ClassPresentation {
     private ActorClassPresentation() {
         super(Actor.class, "", true, new FieldDescriptor[] {
                 new FieldDescriptor(NAME, String.class.getName(), new DefaultDBSource(Actor.class, "name"), true,1, BatchPresentationConsts.ASC, FieldFilterMode.DATABASE,
-                        "ru.runa.common.web.html.PropertyTDBuilder", new Object[] { new Permission(), "name" }),
+                        "ru.runa.common.web.html.PropertyTDBuilder", new Object[] { Permission.NONE, "name" }),
                 new FieldDescriptor(FULL_NAME, String.class.getName(), new DefaultDBSource(Actor.class, "fullName"), true, FieldFilterMode.DATABASE,
-                        "ru.runa.common.web.html.PropertyTDBuilder", new Object[] { new Permission(), "fullName" }),
+                        "ru.runa.common.web.html.PropertyTDBuilder", new Object[] { Permission.NONE, "fullName" }),
                 new FieldDescriptor(DESCRIPTION, String.class.getName(), new DefaultDBSource(Actor.class, "description"), true,
-                        FieldFilterMode.DATABASE, "ru.runa.common.web.html.PropertyTDBuilder", new Object[] { new Permission(), "description" }) });
+                        FieldFilterMode.DATABASE, "ru.runa.common.web.html.PropertyTDBuilder", new Object[] { Permission.NONE, "description" }) });
     }
 
-    public static final ClassPresentation getInstance() {
+    public static ClassPresentation getInstance() {
         return INSTANCE;
     }
 }
